@@ -63,7 +63,7 @@ method.log = function (candle) {
 method.check = function (candle) {
   var BB = this.indicators.bb;
   var price = candle.close;
-  if(this.stopLoss.isTriggered(price)) {
+	if(this.stopLoss.isTriggered(price)) {
 		this.advice('short');
 	    this.stopLoss.destroy();
 	} else {
