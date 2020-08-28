@@ -6,6 +6,7 @@
 // helpers
 var _ = require('lodash');
 var log = require('../core/log.js');
+var helper = require('../helper.js');
 
 var BB = require('./indicators/BB.js');
 var rsi = require('./indicators/RSI.js');
@@ -17,6 +18,8 @@ var method = {};
 method.init = function () {
   this.name = 'BB';
   this.nsamples = 0;
+  this.stopLoss = helper.trailingStopLoss();
+
   this.trend = {
     zone: 'none',  // none, top, high, low, bottom
     duration: 0,
@@ -60,6 +63,12 @@ method.log = function (candle) {
 method.check = function (candle) {
   var BB = this.indicators.bb;
   var price = candle.close;
+  if(this.stopLoss.isTriggered(price)) {
+		this.advice('short');
+	    this.stopLoss.destroy();
+	} else {
+	    this.stopLoss.update(price);
+	}
   this.nsamples++;
 
   var rsi = this.indicators.rsi;
@@ -90,11 +99,17 @@ method.check = function (candle) {
   }
 
   if (price <= BB.lower && rsiVal <= this.settings.thresholds.low && this.trend.duration >= this.settings.thresholds.persistence) {
+    this.stopLoss.create(this.stopLoss.percentage,price);
     this.advice('long')
   }
   if (price >= BB.middle && rsiVal >= this.settings.thresholds.high) {
+    this.stopLoss.destroy();
     this.advice('short')
   }
+  else {
+        this.stopLoss.update(price);
+        this.advice();
+    }
 
   // this.trend = {
   //   zone: zone,  // none, top, high, low, bottom
