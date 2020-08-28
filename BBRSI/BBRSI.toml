@@ -9,3 +9,6 @@ persistence = 9
 TimePeriod = 20
 NbDevUp = 2
 NbDevDn = 2
+
+[trailingStop] 
+percentage = 5
