@@ -19,6 +19,7 @@ method.init = function () {
   this.name = 'BB';
   this.nsamples = 0;
   this.stopLoss = helper.trailingStopLoss();
+this.stopLoss.percentage = this.settings.trailingStop.percentage;
 
   this.trend = {
     zone: 'none',  // none, top, high, low, bottom
