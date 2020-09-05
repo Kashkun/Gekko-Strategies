@@ -6,7 +6,6 @@
 // helpers
 var _ = require('lodash');
 var log = require('../core/log.js');
-var helper = require('../helper.js');
 
 var BB = require('./indicators/BB.js');
 var rsi = require('./indicators/RSI.js');
@@ -18,9 +17,6 @@ var method = {};
 method.init = function () {
   this.name = 'BB';
   this.nsamples = 0;
-  this.stopLoss = helper.trailingStopLoss();
-this.stopLoss.percentage = this.settings.trailingStop.percentage;
-
   this.trend = {
     zone: 'none',  // none, top, high, low, bottom
     duration: 0,
@@ -64,12 +60,6 @@ method.log = function (candle) {
 method.check = function (candle) {
   var BB = this.indicators.bb;
   var price = candle.close;
-	if(this.stopLoss.isTriggered(price)) {
-		this.advice('short');
-	    this.stopLoss.destroy();
-	} else {
-	    this.stopLoss.update(price);
-	}
   this.nsamples++;
 
   var rsi = this.indicators.rsi;
@@ -99,18 +89,46 @@ method.check = function (candle) {
     }
   }
 
-  if (price <= BB.lower && rsiVal <= this.settings.thresholds.low && this.trend.duration >= this.settings.thresholds.persistence) {
-    this.stopLoss.create(this.stopLoss.percentage,price);
+  var percentOfPrice = ((BB.middle - BB.lower) / price);
+  var lowModifier = percentOfPrice * this.settings.custom.LowMod;
+  var highModifier = percentOfPrice * this.settings.custom.HighMod;
+  
+  log.debug('low modifier: ', lowModifier)
+  log.debug('high modifier: ', highModifier)
+
+  var rsiLowThresh = this.settings.thresholds.low - (this.settings.thresholds.low * lowModifier)
+  log.debug('RSI low: ', this.settings.thresholds.low, 'modified: ', rsiLowThresh)
+
+  var rsiHighThresh = this.settings.thresholds.high - (this.settings.thresholds.high * highModifier)
+  log.debug('RSI high: ', this.settings.thresholds.high, 'modified: ', rsiHighThresh)
+
+  var scaledPercent = percentOfPrice * 1000;
+  log.debug('Scaled Percent', scaledPercent);
+  
+  var persistence = this.settings.thresholds.persistence;
+  if(scaledPercent > 4 && scaledPercent < 10)
+  {
+     persistence = persistence - 1
+  }
+
+  if(scaledPercent >= 10 && scaledPercent < 20)
+  {
+     persistence = persistence - 2
+  }
+
+  if(scaledPercent >= 20)
+  {
+     persistence = persistence - 3
+  }
+
+  if (price <= BB.lower && rsiVal <= rsiLowThresh && this.trend.duration >= persistence) {
+    log.debug('ADVISING LONG')
     this.advice('long')
   }
-  if (price >= BB.middle && rsiVal >= this.settings.thresholds.high) {
-    this.stopLoss.destroy();
+  if (price >= BB.middle && rsiVal >= rsiHighThresh) {
+    log.debug('ADVISING SHORT')
     this.advice('short')
   }
-  else {
-        this.stopLoss.update(price);
-        this.advice();
-    }
 
   // this.trend = {
   //   zone: zone,  // none, top, high, low, bottom
